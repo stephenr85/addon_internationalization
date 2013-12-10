@@ -205,14 +205,18 @@ class LanguageAttributeTypeController extends AttributeTypeController  {
 		$KeyClass = get_class($this->getAttributeKey());
 		$ValueClass = get_class($this->getAttributeValue());
 		
-		Log::addEntry(print_r($data, true));
+		//Log::addEntry(print_r($data, true));
 		
 		if($data['oID']){
 			$this->valueOwnerID = $data['oID'];	
 		}
 		
-		if(is_array($data['relation'])){
+		if($data['detach'] == 1){
+			$this->deleteRelation(); //Remove this from the group
+			
+		}else if(is_array($data['relation'])){
 			$this->saveRelations($data['relation']);
+		
 		}
 		
 	}
@@ -232,12 +236,17 @@ class LanguageAttributeTypeController extends AttributeTypeController  {
 		}
 	}
 	
-	public function getRelationID(){
+	public function getRelationID($autoCreate = true){
 		$db = Loader::db();
 		$valueOwnerID = $this->getValueOwnerID();
 		$akID = $this->getAttributeKey()->getAttributeKeyID();
 		$relationID = $db->GetOne("select relationID from atLanguageRelations where akID = ? and oID = ?", array($akID, $valueOwnerID));	
-		return $relationID ? $relationID : $this->getAttributeValue()->getAttributeValueID();
+		if($relationID) {
+			return $relationID;	
+		}else if($autoCreate){
+			$db->Execute('insert into atLanguageRelations (akID, oID) values(?, ?)', array($akID, $valueOwnerID));
+			return $db->Insert_ID();	
+		}
 	}
 	
 	public function getRelations(){		

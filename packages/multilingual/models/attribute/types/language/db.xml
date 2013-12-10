@@ -12,20 +12,21 @@
   </table>
   
   <table name="atLanguageRelations">
-    <field name="oID" type="I" size="10">
+    <field name="relationID" type="I" size="32">
+   	  <PRIMARY/>
+	  <AUTOINCREMENT/>
       <KEY/>
-      <DEFAULT value="0"/>
+	  <UNSIGNED/>
+    </field>
+	<field name="oID" type="I" size="10">
+      <KEY/>
       <UNSIGNED/>
     </field>
 	<field name="akID" type="I" size="10">
       <KEY/>
-      <DEFAULT value="0"/>
       <UNSIGNED/>
     </field>
-   <field name="relationID" type="I" size="32">
-      <KEY/>
-	  <UNSIGNED/>
-    </field>
+   
   </table>
   
 </schema>

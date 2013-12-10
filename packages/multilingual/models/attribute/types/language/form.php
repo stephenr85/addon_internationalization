@@ -1,7 +1,9 @@
 <?php defined('C5_EXECUTE') or die(_("Access Denied."));
 
+$relations = $this->controller->getRelations();
+
 $form = Loader::helper('form');
-$htmlId = uniqid('ccm-locale-attr');
+$htmlId = uniqid('ccm_lang_attr');
 
 $pageSelector = Loader::helper('form/page_selector');
 //$pageSelector->selectPage($this->field('value'), $this->request('value'), false);
@@ -12,42 +14,65 @@ $assetLibrary = Loader::helper('concrete/asset_library');
 
 <div id="<?php echo $htmlId ?>">
 	<?php echo $form->hidden($this->controller->field('oID'), $valueOwnerID); ?>
+    <?php echo $form->hidden($this->controller->field('detach'), 0); ?>
     
 	<?php echo $form->select($this->controller->field('value'), array_merge(array(''=>t('Choose Language')), $locales), $value); ?> 
 	
-    <button class="btn translations"><?php echo t('Manage Translations') ?></button>
+    <button type="button" class="btn translations"><?php echo t('Manage Translations') ?></button>
     
 	<?php //$this->controller->print_pre($this->controller->getRelations()); ?>
   	<div class="translations" style="display:none; margin:1em 0; padding:.5em; border:1em solid rgba(0,0,0,.1);">
-    <table style="width:100%;">        
+    
+    <?php if(is_array($relations) && count($relations)){ ?>
+    <button type="button" class="btn detach"><?php echo t('Detach From Group') ?></button>
+    <?php } ?>
+    
+    <table style="width:100%; margin:.5em 0 0;">        
         <thead>
         	<tr>
-                <th colspan="2" style="text-align:left;">Translations</th>
-                <th style="text-align:center"><button class="btn add">Add</button></th>
+                <th colspan="2" style="text-align:left;"><?php echo t('Translations') ?></th>
+                <th style="text-align:center"><button type="button" class="btn add"><?php echo t('Add') ?></button></th>
             </tr>
         </thead>
         <tbody>        
         
-		<?php foreach($this->controller->getRelations() as $index=>$relation){ ?>
-    
+		<?php foreach($relations as $index=>$relation){ ?>
+    	<?php $relationFieldName = $this->controller->field('relation').'['.$relation[$index].']'; ?>
         <tr>
-            <td><?php echo $form->select($this->controller->field('relation').'['.$relation[$index].'][value]', array_merge(array(''=>t('Choose Language')), $locales), $relation['value']); ?></td>
+            <td><?php echo $form->select($relationFieldName.'[value]', array_merge(array(''=>t('Choose Language')), $locales), $relation['value']); ?></td>
             <td style="padding:.25em 1em;">
-			<?php if($attributeKeyCategoryHandle == 'file'){ 
-                echo $assetLibrary->file(uniqid('ccm-file-akID'), $this->controller->field('relation').'['.$relation['avID'].'][oID]', t('Choose File'), $relation['owner']);
-            }?>
+			<?php 
+			if($attributeKeyCategoryHandle == 'file'){ 
+                echo $assetLibrary->file(uniqid('ccm-select-oID'), $relationFieldName.'[oID]', t('Choose File'), $relation['owner']);
+            }else if($attributeKeyCategoryHandle == 'collection'){
+				echo $pageSelector->selectPage($relationFieldName.'[oID]', $relation['oID']);
+			}else{
+				echo $form->text($relationFieldName.'[oID]');
+				echo t('Error: no selector available for "%s" objects.', $attributeKeyCategoryHandle);	
+			}
+			?>
             </td>
-            <td style="text-align:center"><button class="btn remove">Remove</button></td>
+            <td style="text-align:center"><button type="button" class="btn remove"><?php echo t('Remove') ?></button></td>
         </tr>
 		<?php } ?>
+        
+        <?php $relationFieldName = $this->controller->field('relation').'[x]'; ?>
+        
         <tr class="add-relation">
-        	<td><?php echo $form->select($this->controller->field('relation').'[x][value]', array_merge(array(''=>t('Choose Language')), $locales)); ?></td>
+        	<td><?php echo $form->select($relationFieldName.'[value]', array_merge(array(''=>t('Choose Language')), $locales)); ?></td>
             <td style="padding:.25em 1em;">
-			<?php if($attributeKeyCategoryHandle == 'file'){ 
-                echo $assetLibrary->file(uniqid('ccm-file-akID'), $this->controller->field('relation').'[x][oID]', t('Choose File'), null);
-            }?>
+			<?php 
+			if($attributeKeyCategoryHandle == 'file'){ 
+                echo $assetLibrary->file(uniqid('ccm-select-oID'), $relationFieldName.'[oID]', t('Choose File'), null);
+            }else if($attributeKeyCategoryHandle == 'collection'){
+				echo $pageSelector->selectPage($relationFieldName.'[oID]', null);
+			}else{
+				echo $form->text($relationFieldName.'[oID]');
+				echo t('Error: no selector available for "%s" objects.', $attributeKeyCategoryHandle);	
+			}
+			?>
             </td>
-            <td style="text-align:center"><button class="btn remove">Remove</button></td>
+            <td style="text-align:center"><button type="button" class="btn remove">Remove</button></td>
         </tr>
         </tbody>
     </table>
@@ -64,16 +89,41 @@ $assetLibrary = Loader::helper('concrete/asset_library');
 		$wrap.find('div.translations').slideToggle();	
 	});
 	
+	$wrap.on('click', 'button.detach', function(){
+		$wrap.find('div.translations,button.translations').remove();
+		$wrap.find('[name$="[detach]"]').val(1);	
+	});
+	
 	$wrap.on('click', 'button.remove', function(){
 		$(this).closest('tr').remove();//.hide().find('[name$="[value]"]').val('delete');	
 	});
 	
 	$wrap.on('click', 'button.add', function(){
 		var newHtml = addHtml
-			.replace(/ccm-file-akID/g, 'ccm-file-akID'+$.now())
-			.replace(/\[x\]/g, '['+$wrap.find('table tbody tr').length+']');
-		$wrap.find('table tbody').prepend('<tr>'+newHtml+'</tr>');
+			.replace(/ccm-select-oID/g, 'ccm-select-oID'+$.now())
+			.replace(/\[x\]/g, '['+$wrap.find('table tbody tr').length+']'),
+			$row = $(newHtml);
+			
+		$wrap.find('table tbody').prepend($row);		
+		
+		if(typeof window.ccm_initSelectPage === 'function'){
+			ccm_initSelectPage();
+		}
+		
+		//$row.find('a.ccm-sitemap-select-page').dialog(); //necessary for page selector
 	});
+	
+	
  });
+ 
+ <?php echo $htmlId ?>_selectSitemapNode = function(cID, cName) { 
+		console.log(arguments);
+		var fieldName = $(ccmActivePageField).attr("dialog-sender");
+			var par = $(ccmActivePageField).parent().find('.ccm-summary-selected-item-label');
+			$(ccmActivePageField).parent().find('.ccm-sitemap-clear-selected-page').show();
+			var pari = $(ccmActivePageField).parent().find("[name='"+fieldName+"']");
+			par.html(cName);
+			pari.val(cID);
+ }
 </script>
 		
