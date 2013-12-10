@@ -162,6 +162,19 @@ class MultilingualPackage extends Package {
 			CollectionAttributeKey::add('BOOLEAN',array('akHandle' => 'multilingual_exclude_from_copy', 'akName' => t('Exclude from Internationalization Copy'), 'akIsSearchable' => true), $pkg);
 		}
 		
+		// 1.3.2
+		$at = AttributeType::getByHandle('language');
+		if(!is_object($at)) {
+			$at = AttributeType::add('language', t('Language'), $pkg);
+			$col = AttributeKeyCategory::getByHandle('file');
+			$col->associateAttributeKeyType(AttributeType::getByHandle('language'));
+		}
+		Package::installDB(__DIR__.'/models/attribute/types/language/db.xml');
+		
+		$ak = FileAttributeKey::getByHandle('language');
+		if(!is_object($ak)) {
+			FileAttributeKey::add('language',array('akHandle' => 'language', 'akName' => t('Language'), 'akIsSearchable' => true), $pkg);
+		}
 	}
 
 }
