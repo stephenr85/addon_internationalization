@@ -6,7 +6,7 @@ Loader::library('content_localization', 'multilingual');
 
 class LanguageAttributeTypeController extends AttributeTypeController  {
 
-	protected $searchIndexFieldDefinition = 'C 11 DEFAULT 0 NULL';
+	protected $searchIndexFieldDefinition = 'C 11 DEFAULT NULL NULL';
 
 	public function getValue() {		
 		$db = Loader::db();
@@ -69,6 +69,7 @@ class LanguageAttributeTypeController extends AttributeTypeController  {
 		$attrCategoryHandle = $this->getAttributeKeyCategoryHandle();
 		$oID = $this->getValueOwnerID();
 		
+		
 		if($attrCategoryHandle == 'collection'){
 			return Page::getByID($oID);
 		}else if($attrCategoryHandle == 'file'){
@@ -97,19 +98,27 @@ class LanguageAttributeTypeController extends AttributeTypeController  {
 		$attrCategoryHandle = $this->getAttributeKeyCategoryHandle();		
 		$valueObj = $this->getAttributeValue();
 		
-		if(!is_object($valueObj)) return; //nothin'
+		//if(!is_object($valueObj)) return; //nothin'
 		
-		//Get the ID from the attribute value object...this should be easier to get to. gross.
-		if($attrCategoryHandle == 'collection' && is_object($valueObj->c)){
-			return $valueObj->c->getCollectionID(); 
-		}else if($attrCategoryHandle == 'file' && is_object($valueObj->f)){
-			return $valueObj->f->getFileID();
-		}else if($attrCategoryHandle == 'user' && is_object($valueObj->u)){
-			return $valueObj->u->getUserID();	
+		//Shouldn't have to do this statically, in case more collection types are added, but I'm not able to find the ID otherwise...
+		if($attrCategoryHandle == 'collection'){
+			$oID = $_REQUEST['cID'];
+		}else if($attrCategoryHandle == 'file'){
+			$oID = $_REQUEST['fID'];
+		}else if($attrCategoryHandle == 'user'){
+			$oID = $_REQUEST['uID'];
 		}
+		if(is_array($oID)){
+			$this->set('isBulk', true);
+			$oID = reset($oID);	
+		}else{
+			$this->set('isBulk', false);
+		}
+		return $oID;
 	}
 	
 	public function form() {
+	
 		//Determine what type of owner object we're working with
 		$attrCategoryHandle = $this->getAttributeKeyCategoryHandle();
 		$this->set('attributeKeyCategoryHandle', $attrCategoryHandle);
@@ -118,6 +127,7 @@ class LanguageAttributeTypeController extends AttributeTypeController  {
 		$this->set('ValueOwnerClass', $ValueOwnerClass);
 		
 		$this->set('valueOwnerID', $this->getValueOwnerID());
+		
 		$this->set('valueOwner', $this->getValueOwner());		
 			
 		if (is_object($this->attributeValue)) {
@@ -131,6 +141,7 @@ class LanguageAttributeTypeController extends AttributeTypeController  {
 		$this->set('locales', $locales);
 		$this->set('defaultLanguage', $pkg->config('DEFAULT_LANGUAGE'));
 		$this->set('value', $value);
+		$this->set('relations', $this->getRelations(true));
 	}
 	
 	public function validateForm($p) {
@@ -214,9 +225,9 @@ class LanguageAttributeTypeController extends AttributeTypeController  {
 		if($data['detach'] == 1){
 			$this->deleteRelation(); //Remove this from the group
 			
-		}else if(is_array($data['relation'])){
-			$this->saveRelations($data['relation']);
-		
+		}else if(!$data['isBulk']){
+			$relations = is_array($data['relation']) ? $data['relation'] : array();
+			$this->saveRelations($relations);		
 		}
 		
 	}
@@ -249,21 +260,37 @@ class LanguageAttributeTypeController extends AttributeTypeController  {
 		}
 	}
 	
-	public function getRelations(){		
+	public function getRelations($expensive=false){
 		$db = Loader::db();	
 		$valueOwnerID = $this->getValueOwnerID();
 		$akID = $this->getAttributeKey()->getAttributeKeyID();
 		
 		$rows = $db->GetAll("select oID, relationID from atLanguageRelations where relationID = (select relationID from atLanguageRelations where oID = ?) and oID != ?", array($valueOwnerID, $valueOwnerID));
+	
+		if($expensive){
+			$ValueOwnerClass = $this->getValueOwnerClass();
 		
-		$ValueOwnerClass = $this->getValueOwnerClass();
+			foreach($rows as &$row){	
+				$owner = $ValueOwnerClass::getByID($row['oID']);
+				$lang = $owner->getAttribute($this->getAttributeKey()->getAttributeKeyHandle());
+				$row['value'] = $lang;
+				$row['owner'] = $owner;
+			}
 		
-		foreach($rows as &$row){			
-			$row['owner'] = $ValueOwnerClass::getByID($row['oID']);
-			$row['value'] = $row['owner']->getAttribute($this->getAttributeKey()->getAttributeKeyHandle());
+		}
+		return $rows;
+	}
+	
+	public function getRelationsOwnerHash(){
+		$rows = $this->getRelations(true);
+		
+		$relations = array();
+		
+		foreach($rows as &$row){	
+			$relations[$row['value']] = $row['owner'];
 		}
 	
-		return $rows;
+		return $relations;
 	}
 	
 	public function print_pre($thing, $return=false){

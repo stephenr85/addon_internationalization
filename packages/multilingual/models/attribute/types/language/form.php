@@ -1,7 +1,5 @@
 <?php defined('C5_EXECUTE') or die(_("Access Denied."));
 
-$relations = $this->controller->getRelations();
-
 $form = Loader::helper('form');
 $htmlId = uniqid('ccm_lang_attr');
 
@@ -15,68 +13,72 @@ $assetLibrary = Loader::helper('concrete/asset_library');
 <div id="<?php echo $htmlId ?>">
 	<?php echo $form->hidden($this->controller->field('oID'), $valueOwnerID); ?>
     <?php echo $form->hidden($this->controller->field('detach'), 0); ?>
+    <?php echo $form->hidden($this->controller->field('isBulk'), $isBulk); ?>
     
 	<?php echo $form->select($this->controller->field('value'), array_merge(array(''=>t('Choose Language')), $locales), $value); ?> 
 	
-    <button type="button" class="btn translations"><?php echo t('Manage Translations') ?></button>
-    
-	<?php //$this->controller->print_pre($this->controller->getRelations()); ?>
-  	<div class="translations" style="display:none; margin:1em 0; padding:.5em; border:1em solid rgba(0,0,0,.1);">
-    
-    <?php if(is_array($relations) && count($relations)){ ?>
-    <button type="button" class="btn detach"><?php echo t('Detach From Group') ?></button>
-    <?php } ?>
-    
-    <table style="width:100%; margin:.5em 0 0;">        
-        <thead>
-        	<tr>
-                <th colspan="2" style="text-align:left;"><?php echo t('Translations') ?></th>
-                <th style="text-align:center"><button type="button" class="btn add"><?php echo t('Add') ?></button></th>
+    <?php if(!$isBulk){ ?>
+        <button type="button" class="btn translations"><?php echo t('Manage Translations') ?></button>
+        
+        <?php //$this->controller->print_pre($this->controller->getRelations()); ?>
+        <div class="translations" style="display:none; margin:1em 0; padding:.5em; border:1em solid rgba(0,0,0,.1);">
+        
+        <?php if(is_array($relations) && count($relations)){ ?>
+        <button type="button" class="btn detach"><?php echo t('Detach From Group') ?></button>
+        <?php } ?>
+        
+        <table style="width:100%; margin:.5em 0 0;">        
+            <thead>
+                <tr>
+                    <th colspan="2" style="text-align:left;"><?php echo t('Translations') ?></th>
+                    <th style="text-align:center"><button type="button" class="btn add"><?php echo t('Add') ?></button></th>
+                </tr>
+            </thead>
+            <tbody>        
+            
+            <?php foreach($relations as $index=>$relation){ ?>
+            <?php $relationFieldName = $this->controller->field('relation').'['.$relation[$index].']'; ?>
+            <tr>
+                <td><?php echo $form->select($relationFieldName.'[value]', array_merge(array(''=>t('Choose Language')), $locales), $relation['value']); ?></td>
+                <td style="padding:.25em 1em;">
+                <?php 
+                if($attributeKeyCategoryHandle == 'file'){ 
+                    echo $assetLibrary->file(uniqid('ccm-select-oID'), $relationFieldName.'[oID]', t('Choose File'), $relation['owner']);
+                }else if($attributeKeyCategoryHandle == 'collection'){
+                    echo $pageSelector->selectPage($relationFieldName.'[oID]', $relation['oID']);
+                }else{
+                    echo $form->text($relationFieldName.'[oID]');
+                    echo t('Error: no selector available for "%s" objects.', $attributeKeyCategoryHandle);	
+                }
+                ?>
+                </td>
+                <td style="text-align:center"><button type="button" class="btn remove"><?php echo t('Remove') ?></button></td>
             </tr>
-        </thead>
-        <tbody>        
-        
-		<?php foreach($relations as $index=>$relation){ ?>
-    	<?php $relationFieldName = $this->controller->field('relation').'['.$relation[$index].']'; ?>
-        <tr>
-            <td><?php echo $form->select($relationFieldName.'[value]', array_merge(array(''=>t('Choose Language')), $locales), $relation['value']); ?></td>
-            <td style="padding:.25em 1em;">
-			<?php 
-			if($attributeKeyCategoryHandle == 'file'){ 
-                echo $assetLibrary->file(uniqid('ccm-select-oID'), $relationFieldName.'[oID]', t('Choose File'), $relation['owner']);
-            }else if($attributeKeyCategoryHandle == 'collection'){
-				echo $pageSelector->selectPage($relationFieldName.'[oID]', $relation['oID']);
-			}else{
-				echo $form->text($relationFieldName.'[oID]');
-				echo t('Error: no selector available for "%s" objects.', $attributeKeyCategoryHandle);	
-			}
-			?>
-            </td>
-            <td style="text-align:center"><button type="button" class="btn remove"><?php echo t('Remove') ?></button></td>
-        </tr>
-		<?php } ?>
-        
-        <?php $relationFieldName = $this->controller->field('relation').'[x]'; ?>
-        
-        <tr class="add-relation">
-        	<td><?php echo $form->select($relationFieldName.'[value]', array_merge(array(''=>t('Choose Language')), $locales)); ?></td>
-            <td style="padding:.25em 1em;">
-			<?php 
-			if($attributeKeyCategoryHandle == 'file'){ 
-                echo $assetLibrary->file(uniqid('ccm-select-oID'), $relationFieldName.'[oID]', t('Choose File'), null);
-            }else if($attributeKeyCategoryHandle == 'collection'){
-				echo $pageSelector->selectPage($relationFieldName.'[oID]', null);
-			}else{
-				echo $form->text($relationFieldName.'[oID]');
-				echo t('Error: no selector available for "%s" objects.', $attributeKeyCategoryHandle);	
-			}
-			?>
-            </td>
-            <td style="text-align:center"><button type="button" class="btn remove">Remove</button></td>
-        </tr>
-        </tbody>
-    </table>
-   </div>
+            <?php } ?>
+            
+            <?php $relationFieldName = $this->controller->field('relation').'[x]'; ?>
+            
+            <tr class="add-relation">
+                <td><?php echo $form->select($relationFieldName.'[value]', array_merge(array(''=>t('Choose Language')), $locales)); ?></td>
+                <td style="padding:.25em 1em;">
+                <?php 
+                if($attributeKeyCategoryHandle == 'file'){ 
+                    echo $assetLibrary->file(uniqid('ccm-select-oID'), $relationFieldName.'[oID]', t('Choose File'), null);
+                }else if($attributeKeyCategoryHandle == 'collection'){
+                    echo $pageSelector->selectPage($relationFieldName.'[oID]', null);
+                }else{
+                    echo $form->text($relationFieldName.'[oID]');
+                    echo t('Error: no selector available for "%s" objects.', $attributeKeyCategoryHandle);	
+                }
+                ?>
+                </td>
+                <td style="text-align:center"><button type="button" class="btn remove">Remove</button></td>
+            </tr>
+            </tbody>
+        </table>
+        <p class="ccm-note"><?php echo t('Note: The languages set on the files above will directly alter the language of the respective files.') ?></p>
+       </div>
+   <?php } //end if !isBulk ?>
    
 </div>
 		
@@ -102,7 +104,7 @@ $assetLibrary = Loader::helper('concrete/asset_library');
 		var newHtml = addHtml
 			.replace(/ccm-select-oID/g, 'ccm-select-oID'+$.now())
 			.replace(/\[x\]/g, '['+$wrap.find('table tbody tr').length+']'),
-			$row = $(newHtml);
+			$row = $('<tr>'+newHtml+'</tr>');
 			
 		$wrap.find('table tbody').prepend($row);		
 		
